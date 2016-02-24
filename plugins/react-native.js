@@ -12,8 +12,10 @@
  *   pathStrip: A RegExp that matches the portions of a file URI that should be
  *     removed from stacks prior to submission.
  *
- *   noRethrow: Pass true if you DO NOT wish for Raven to call the original
- *     global exception handler (e.g. don't crash the app).
+ *   rethrow: Pass true if you wish for Raven to call the original global
+ *     exception handler (e.g. don't crash the app or show the redbox).
+ *     Default behavior is to rethrow in dev (for redbox), and NOT to rethrow
+ *     (keeping the app alive after a JS exception).
  */
 'use strict';
 
@@ -85,9 +87,10 @@ function reactNativePlugin(Raven, pluginOptions) {
 
     var defaultHandler = ErrorUtils.getGlobalHandler && ErrorUtils.getGlobalHandler() || ErrorUtils._globalHandler;
 
+    var rethrow = pluginOptions.rethrow || __DEV__;
     ErrorUtils.setGlobalHandler(function(){
       var error = arguments[0];
-      if (!pluginOptions.noRethrow) {
+      if (rethrow) {
         defaultHandler.apply(this, arguments)
       }
       Raven.captureException(error);

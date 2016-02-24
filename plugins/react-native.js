@@ -5,18 +5,30 @@
  *
  * Usage:
  *   var Raven = require('raven-js');
- *   require('raven-js/plugins/react-native')(Raven);
+ *   Raven.addPlugin(require('raven-js/plugins/react-native'));
+ *
+ * Options:
+ *
+ *   pathStrip: A RegExp that matches the portions of a file URI that should be
+ *     removed from stacks prior to submission.
+ *
+ *   preventDefault: Pass true if you DO NOT wish for Raven to call the original
+ *     global exception handler (e.g. don't crash the app).
  */
 'use strict';
 
-var DEVICE_PATH_RE = /^\/var\/mobile\/Containers\/Bundle\/Application\/[^\/]+\/[^\.]+\.app/;
-function normalizeUrl(url) {
-    return url
-        .replace(/^file\:\/\//, '')
-        .replace(DEVICE_PATH_RE, '');
-}
+var PATH_STRIP_RE = /^\/var\/mobile\/Containers\/Bundle\/Application\/[^\/]+\/[^\.]+\.app/;
 
-function reactNativePlugin(Raven) {
+function reactNativePlugin(Raven, pluginOptions) {
+    pluginOptions = pluginOptions || {};
+
+    var pathStrip = pluginOptions.pathStrip || PATH_STRIP_RE;
+    function normalizeUrl(url) {
+        return url
+            .replace(/^file\:\/\//, '')
+            .replace(pathStrip, '');
+    }
+
     function urlencode(obj) {
         var pairs = [];
         for (var key in obj) {
@@ -75,7 +87,9 @@ function reactNativePlugin(Raven) {
 
     ErrorUtils.setGlobalHandler(function(){
       var error = arguments[0];
-      defaultHandler.apply(this, arguments)
+      if (!pluginOptions.preventDefault) {
+        defaultHandler.apply(this, arguments)
+      }
       Raven.captureException(error);
     });
 }

@@ -11,6 +11,8 @@
  */
 'use strict';
 
+var utils = require('../src/utils');
+
 function consolePlugin(Raven, console, pluginOptions) {
     console = console || window.console || {};
     pluginOptions = pluginOptions || {};
@@ -27,7 +29,27 @@ function consolePlugin(Raven, console, pluginOptions) {
         if (l === 'warn') l = 'warning';
         return function () {
             var args = [].slice.call(arguments);
-            Raven.captureMessage('' + args.join(' '), {level: l, logger: 'console', extra: { 'arguments': args }});
+            var error;
+            for (var i = 0; i < args.length; i++) {
+                var arg = args[i];
+                if (utils.isError(arg)) {
+                    error = arg;
+                }
+            }
+
+            var message = '' + args.join(' ');
+            var options = {
+                level: l,
+                logger: 'console',
+                extra: { 'arguments': args }
+            };
+
+            if (error) {
+                options.message = message;
+                Raven.captureException(error, options);
+            } else {
+                Raven.captureMessage(message, options);
+            }
 
             // this fails for some browsers. :(
             if (originalConsoleLevel) {
